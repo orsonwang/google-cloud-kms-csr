@@ -29,10 +29,10 @@ func main() {
 	orgFlag := flag.String("org", "", "")
 	emailFlag := flag.String("email", "", "")
 	outFlag := flag.String("out", "out.csr", "")
-	orgUnitFlag := flag.String("org-unit","", "")
-	countryFlag := flag.String("country","US", "")
-	provinceFlag := flag.String("province","California", "")
-	localityFlag := flag.String("locality","San Francisco", "")
+	orgUnitFlag := flag.String("org-unit", "", "")
+	countryFlag := flag.String("country", "US", "")
+	provinceFlag := flag.String("province", "California", "")
+	localityFlag := flag.String("locality", "San Francisco", "")
 
 	flag.Parse()
 
@@ -81,7 +81,28 @@ func main() {
 	// TODO Make this a flag or read from s.PublicKey?
 	//      https://cloud.google.com/kms/docs/algorithms
 	//      https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys#CryptoKeyVersionTemplate
-	template.SignatureAlgorithm = x509.ECDSAWithSHA256 // x509.SHA256WithRSAPSS
+	template.SignatureAlgorithm = x509.SHA256WithRSA // x509.SHA256WithRSAPSS
+
+	// const (
+	// 	UnknownSignatureAlgorithm SignatureAlgorithm = iota
+
+	// 	MD2WithRSA  // Unsupported.
+	// 	MD5WithRSA  // Only supported for signing, not verification.
+	// 	SHA1WithRSA // Only supported for signing, and verification of CRLs, CSRs, and OCSP responses.
+	// 	SHA256WithRSA
+	// 	SHA384WithRSA
+	// 	SHA512WithRSA
+	// 	DSAWithSHA1   // Unsupported.
+	// 	DSAWithSHA256 // Unsupported.
+	// 	ECDSAWithSHA1 // Only supported for signing, and verification of CRLs, CSRs, and OCSP responses.
+	// 	ECDSAWithSHA256
+	// 	ECDSAWithSHA384
+	// 	ECDSAWithSHA512
+	// 	SHA256WithRSAPSS
+	// 	SHA384WithRSAPSS
+	// 	SHA512WithRSAPSS
+	// 	PureEd25519
+	// )
 
 	f, err := os.Create(*outFlag)
 	if err != nil {
