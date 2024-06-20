@@ -15,8 +15,10 @@ import (
 	"log"
 	"os"
 
-	"golang.org/x/oauth2/google"
-	"google.golang.org/api/cloudkms/v1"
+	//"golang.org/x/oauth2/google"
+	//"google.golang.org/api/cloudkms/v1"
+        kms "cloud.google.com/go/kms/apiv1"
+        kmspb "cloud.google.com/go/kms/apiv1/kmspb"	
 )
 
 func main() {
@@ -29,17 +31,15 @@ func main() {
 
 	flag.Parse()
 
-	oauthClient, err := google.DefaultClient(context.Background(), cloudkms.CloudPlatformScope)
-	if err != nil {
-		log.Fatal(err)
-	}
+	// Create the client.
+        ctx := context.Background()
+        client, err := kms.NewKeyManagementClient(ctx)
+        if err != nil {
+                log.Fatalf("failed to setup client: %v", err)
+        }
+        defer client.Close()
 
-	kmsService, err := cloudkms.New(oauthClient)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	s, err := NewGoogleKMSSigner(kmsService, *keyFlag)
+	s, err := NewGoogleKMSSigner(client, *keyFlag)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -73,15 +73,15 @@ func CreateCertificateRequest(w io.Writer, template *x509.CertificateRequest, si
 }
 
 type GoogleKMS struct {
-	Client        *cloudkms.Service
 	keyResourceId string
 	publicKey     crypto.PublicKey
+	client	kms.AutokeyClient
 }
 
-func NewGoogleKMSSigner(client *cloudkms.Service, keyResourceId string) (*GoogleKMS, error) {
+func NewGoogleKMSSigner(client kms.AutokeyClient, keyResourceId string) (*GoogleKMS, error) {
 	g := &GoogleKMS{
 		keyResourceId: keyResourceId,
-		Client:        client,
+		client: client,
 	}
 
 	err := g.getAsymmetricPublicKey()
@@ -102,17 +102,17 @@ func (g *GoogleKMS) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts) 
 	// API expects the digest to be base64 encoded
 	digest64 := base64.StdEncoding.EncodeToString(digest)
 
-	req := &cloudkms.AsymmetricSignRequest{
-		Digest: &cloudkms.Digest{
+	req := &kmspb.AsymmetricSignRequest{
+		Name: keyResourceId,
+		Digest: &kmspb.Digest{
 			Sha256: digest64, // TODO: sha256 needs to follow sign algo
 		},
 	}
-
-	response, err := g.Client.Projects.Locations.KeyRings.CryptoKeys.CryptoKeyVersions.
-		AsymmetricSign(g.keyResourceId, req).Context(context.Background()).Do()
-	if err != nil {
-		return nil, err
-	}
+        // Call the API.
+        response, err := client.AsymmetricSign(ctx, req)
+        if err != nil {
+                return fmt.Errorf("failed to sign digest: %w", err)
+        }
 
 	// The response signature is base64 encoded
 	return base64.StdEncoding.DecodeString(response.Signature)
@@ -120,12 +120,12 @@ func (g *GoogleKMS) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts) 
 
 // getAsymmetricPublicKey pulls public key from Google Cloud KMS API
 func (g *GoogleKMS) getAsymmetricPublicKey() error {
-	response, err := g.Client.Projects.Locations.KeyRings.CryptoKeys.CryptoKeyVersions.
-		GetPublicKey(g.keyResourceId).Context(context.Background()).Do()
-	if err != nil {
-		return err
-	}
-
+// Retrieve the public key from KMS.
+        response, err := client.GetPublicKey(ctx, &kmspb.GetPublicKeyRequest{Name: keyResourceId})
+        if err != nil {
+                return fmt.Errorf("failed to get public key: %w", err)
+        }
+	
 	block, _ := pem.Decode([]byte(response.Pem))
 	if block == nil || block.Type != "PUBLIC KEY" {
 		return fmt.Errorf("not a public key")
