@@ -19,20 +19,13 @@ import (
 	"google.golang.org/api/cloudkms/v1"
 )
 
-var (
-	oidEmailAddress = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 9, 1}
-)
-
 func main() {
 	keyFlag := flag.String("key", "", "")
 	commonNameFlag := flag.String("common-name", "", "")
-	orgFlag := flag.String("org", "", "")
-	emailFlag := flag.String("email", "", "")
+	//orgFlag := flag.String("org", "", "")
 	outFlag := flag.String("out", "out.csr", "")
-	orgUnitFlag := flag.String("org-unit", "", "")
-	countryFlag := flag.String("country", "US", "")
-	provinceFlag := flag.String("province", "California", "")
-	localityFlag := flag.String("locality", "San Francisco", "")
+	//countryFlag := flag.String("country", "", "")
+	//localityFlag := flag.String("locality", "", "")
 
 	flag.Parse()
 
@@ -50,60 +43,15 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	subj := pkix.Name{
-		CommonName:         *commonNameFlag,
-		Organization:       []string{*orgFlag},
-		OrganizationalUnit: []string{*orgUnitFlag},
-		Country:            []string{*countryFlag},
-		Province:           []string{*provinceFlag},
-		Locality:           []string{*localityFlag},
-	}
-
-	rawSubj := subj.ToRDNSequence()
-	template := &x509.CertificateRequest{}
-
-	if *emailFlag != "" {
-		rawSubj = append(rawSubj, []pkix.AttributeTypeAndValue{
-			{Type: oidEmailAddress, Value: *emailFlag},
-		})
-
-		template.EmailAddresses = []string{*emailFlag}
-	}
-
-	asn1Subj, err := asn1.Marshal(rawSubj)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	template.RawSubject = asn1Subj
-
-	// TODO Make this a flag or read from s.PublicKey?
-	//      https://cloud.google.com/kms/docs/algorithms
-	//      https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys#CryptoKeyVersionTemplate
-	template.SignatureAlgorithm = x509.SHA256WithRSA // x509.SHA256WithRSAPSS
-
-	// const (
-	// 	UnknownSignatureAlgorithm SignatureAlgorithm = iota
-
-	// 	MD2WithRSA  // Unsupported.
-	// 	MD5WithRSA  // Only supported for signing, not verification.
-	// 	SHA1WithRSA // Only supported for signing, and verification of CRLs, CSRs, and OCSP responses.
-	// 	SHA256WithRSA
-	// 	SHA384WithRSA
-	// 	SHA512WithRSA
-	// 	DSAWithSHA1   // Unsupported.
-	// 	DSAWithSHA256 // Unsupported.
-	// 	ECDSAWithSHA1 // Only supported for signing, and verification of CRLs, CSRs, and OCSP responses.
-	// 	ECDSAWithSHA256
-	// 	ECDSAWithSHA384
-	// 	ECDSAWithSHA512
-	// 	SHA256WithRSAPSS
-	// 	SHA384WithRSAPSS
-	// 	SHA512WithRSAPSS
-	// 	PureEd25519
-	// )
-
+        template := x509.CertificateRequest{
+            Subject: pkix.Name{
+	    	CommonName:         *commonNameFlag,
+		//Organization:       []string{*orgFlag},
+		//Country:            []string{*countryFlag},
+		//Locality:           []string{*localityFlag},
+            },
+        }
+	
 	f, err := os.Create(*outFlag)
 	if err != nil {
 		log.Fatal(err)
